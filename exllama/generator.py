@@ -292,8 +292,29 @@ class ExLlamaGenerator:
 
 
     # Simple generator function
+    def generate_text(self, prompt,stopping_criteria_list,max_new_tokens = 128):
+        stop_condition = False
+        with torch.no_grad():
+            # torch.manual_seed(42)
+            self.end_beam_search()
 
-    def generate_simple(self, prompt, max_new_tokens = 128):
+            ids = self.tokenizer.encode(prompt)
+            #llama.generator.gen_begin(ids)
+            self.gen_begin_reuse(ids)
+
+            for i in range(max_new_tokens):
+                token = self.gen_single_token()
+                self.gen_prune_left
+                if token.item() == self.tokenizer.eos_token_id: break
+                for eos_token in stopping_criteria_list :
+                    if self.sequence_ends_with(eos_token) :
+                        stop_condition = True
+                        break
+                if stop_condition: break
+            generated_ids = self.sequence[0][len(ids[0]):]
+            generated_text = self.tokenizer.decode(generated_ids)
+        return generated_text
+    def generate_simple(self, prompt,max_new_tokens = 128):
 
         self.end_beam_search()
 
@@ -303,13 +324,20 @@ class ExLlamaGenerator:
         max_new_tokens = min(max_new_tokens, self.model.config.max_seq_len - ids.shape[1])
 
         eos = torch.zeros((ids.shape[0],), dtype = torch.bool)
+        stop_condition = False
         for i in range(max_new_tokens):
             token = self.gen_single_token()
+            #print(self.sequence[0][-2:].tolist())
+            #print(self.tokenizer.decode(self.sequence[0][-2:]))
             for j in range(token.shape[0]):
                 if token[j, 0].item() == self.tokenizer.eos_token_id: eos[j] = True
             if eos.all(): break
-
-        text = self.tokenizer.decode(self.sequence[0] if self.sequence.shape[0] == 1 else self.sequence)
+            if i > 0 and (self.sequence[0][-2:].tolist() == [3492, 29901] or self.sequence[0][-2:].tolist() == [2659, 29901] or self.sequence[0][-2:].tolist() == [22137, 29901]): 
+                break
+            #print(stop_condition)
+            #print(self.sequence[0][-2:].tolist())
+        new_text = self.tokenizer.decode(self.sequence[0] if self.sequence.shape[0] == 1 else self.sequence)
+        text = new_text[len(prompt):]  # get the newly generated text by removing the prompt
         return text
 
 
